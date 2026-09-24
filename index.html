@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Surplus-to-Shelter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --cream:#FFF8EC; --cream2:#FFF1DC;
+    --ink:#1C1B16; --muted:#867F6E;
+    --orange:#FF6B35; --orange-d:#E1521F;
+    --green:#12402F; --green-soft:#E6F3EA;
+    --mustard:#F2B134; --pink:#E83E8C; --purple:#6C5CE7; --teal:#12B3A8; --red:#E5484D; --blue:#3B82F6;
+    --white:#FFFFFF;
+    --shadow-sm:0 4px 14px rgba(28,27,22,.06);
+    --shadow-md:0 14px 34px rgba(28,27,22,.10);
+    --shadow-lg:0 22px 50px rgba(28,27,22,.16);
+    --radius:20px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Poppins",system-ui,sans-serif;color:var(--ink);background:var(--cream);min-height:100vh;}
+  h1,h2,h3,.display{font-family:"Fredoka",system-ui,sans-serif;}
+  ::selection{background:var(--orange);color:#fff;}
+
+  /* ---------- topbar ---------- */
+  .topbar{position:sticky;top:0;z-index:40;background:rgba(255,248,236,.9);backdrop-filter:blur(10px);
+          display:flex;align-items:center;gap:18px;padding:14px 24px;border-bottom:1px solid #f1e7d4;}
+  .brand{display:flex;align-items:center;gap:10px;margin-right:auto;}
+  .brand .mascot{font-size:30px;display:inline-block;animation:bob 2.6s ease-in-out infinite;}
+  .brand b{font-family:"Fredoka";font-size:19px;display:block;line-height:1.1;}
+  .brand span{font-size:11.5px;color:var(--muted);}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg);}50%{transform:translateY(-6px) rotate(4deg);}}
+
+  .tabs{position:relative;display:flex;gap:4px;background:#fff;padding:5px;border-radius:99px;box-shadow:var(--shadow-sm);}
+  .tabs button{position:relative;z-index:2;overflow:hidden;border:0;background:transparent;padding:9px 18px;border-radius:99px;
+               font-family:"Poppins";font-weight:600;font-size:14px;color:var(--ink);cursor:pointer;
+               transition:color .25s ease,transform .25s cubic-bezier(.34,1.56,.64,1);}
+  .tabs button:hover{transform:scale(1.08);}
+  .tabs button:active{transform:scale(.92);}
+  .tabs button.active{color:#fff;}
+  .tab-underline{position:absolute;top:5px;left:5px;height:calc(100% - 10px);border-radius:99px;
+                  background:linear-gradient(120deg,var(--orange),var(--orange-d));
+                  transition:left .35s cubic-bezier(.65,0,.35,1),width .35s cubic-bezier(.65,0,.35,1);z-index:1;}
+
+  .btn{position:relative;overflow:hidden;border:0;cursor:pointer;font-family:"Poppins";font-weight:700;border-radius:99px;
+       transition:transform .28s cubic-bezier(.34,1.56,.64,1),box-shadow .28s ease,background .2s ease;
+       will-change:transform;}
+  .btn:hover{animation:wiggle .5s ease;}
+  .btn:active{transform:scale(.90) rotate(-2deg)!important;}
+  .btn-dark{background:var(--ink);color:#fff;padding:12px 24px;font-size:15px;}
+  .btn-dark:hover{transform:translateY(-5px) scale(1.07) rotate(-1deg);box-shadow:var(--shadow-lg);}
+  .btn-orange{background:linear-gradient(120deg,var(--orange),var(--orange-d));color:#fff;padding:12px 24px;font-size:15px;}
+  .btn-orange:hover{transform:translateY(-5px) scale(1.07) rotate(1deg);box-shadow:0 18px 36px rgba(255,107,53,.45);}
+  .btn-ghost{background:#fff;color:var(--ink);border:2px solid #f0e6d4!important;padding:9px 16px;font-size:13px;}
+  .btn-ghost:hover{transform:translateY(-4px) scale(1.06) rotate(-1deg);border-color:var(--orange)!important;box-shadow:var(--shadow-md);}
+  .btn-sm{padding:9px 16px;font-size:13.5px;}
+  @keyframes wiggle{0%,100%{}25%{transform:translateY(-5px) rotate(-2deg) scale(1.06);}75%{transform:translateY(-5px) rotate(2deg) scale(1.06);}}
+  .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);
+          animation:rippleAnim .6s ease-out forwards;pointer-events:none;}
+  .btn-ghost .ripple{background:rgba(255,107,53,.25);}
+  @keyframes rippleAnim{to{transform:scale(3.2);opacity:0;}}
+
+  main{max-width:1040px;margin:0 auto;padding:0 20px 60px;}
+
+  /* ---------- hero (donor tab) ---------- */
+  .hero{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;align-items:center;padding:44px 8px 30px;position:relative;}
+  .hero h1{font-size:44px;line-height:1.06;margin:0 0 14px;font-weight:600;}
+  .hero h1 .accent{color:var(--orange);display:block;}
+  .hero p{color:var(--muted);font-size:15.5px;max-width:40ch;margin:0 0 22px;}
+  .hero-art{position:relative;height:230px;display:flex;align-items:center;justify-content:center;}
+  .hero-art .plate{font-size:120px;filter:drop-shadow(0 18px 26px rgba(0,0,0,.15));animation:bob 4s ease-in-out infinite;}
+  .doodle{position:absolute;font-size:26px;animation:float 5s ease-in-out infinite;}
+  @keyframes float{0%,100%{transform:translateY(0) rotate(-4deg);}50%{transform:translateY(-18px) rotate(8deg);}}
+  .d1{top:6%;left:4%;animation-delay:.2s;} .d2{top:8%;right:2%;animation-delay:.9s;font-size:22px;}
+  .d3{bottom:10%;left:0;animation-delay:1.4s;font-size:20px;} .d4{bottom:2%;right:10%;animation-delay:.5s;}
+
+  .mini-card{position:absolute;right:-6px;top:-14px;background:#fff;border-radius:16px;box-shadow:var(--shadow-md);
+             padding:10px 14px;display:flex;gap:10px;align-items:center;animation:float 6s ease-in-out infinite;}
+  .mini-card .ic{font-size:26px;} .mini-card b{display:block;font-size:12.5px;} .mini-card span{font-size:11px;color:var(--orange);font-weight:700;}
+
+  /* ---------- category chips ---------- */
+  .chips{display:flex;gap:14px;flex-wrap:wrap;padding:6px 8px 28px;}
+  .chip{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;border:0;background:transparent;
+        font-family:"Poppins";opacity:0;animation:popIn .5s ease forwards;}
+  .chip:nth-child(1){animation-delay:.05s;} .chip:nth-child(2){animation-delay:.12s;} .chip:nth-child(3){animation-delay:.19s;}
+  .chip:nth-child(4){animation-delay:.26s;} .chip:nth-child(5){animation-delay:.33s;} .chip:nth-child(6){animation-delay:.40s;}
+  @keyframes popIn{from{opacity:0;transform:translateY(14px) scale(.85);}to{opacity:1;transform:translateY(0) scale(1);}}
+  .chip .circle{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;
+                 box-shadow:var(--shadow-sm);transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;}
+  .chip:hover .circle{transform:translateY(-10px) rotate(-10deg) scale(1.16);box-shadow:var(--shadow-lg);}
+  .chip:active .circle{transform:scale(.9) rotate(0);}
+  .chip.active .circle{outline:3px solid var(--orange);animation:pulse .5s ease;}
+  .chip small{font-size:12px;font-weight:600;color:var(--muted);}
+
+  /* ---------- cards ---------- */
+  .card{background:#fff;border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:var(--shadow-sm);}
+  .lift{transition:transform .35s cubic-bezier(.34,1.2,.64,1),box-shadow .35s ease;}
+  .lift:hover{transform:translateY(-8px) scale(1.015);box-shadow:var(--shadow-lg);}
+  h2{margin-top:0;font-size:21px;} h3{margin-top:0;font-size:16.5px;}
+
+  label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:14px 0 6px;letter-spacing:.2px;}
+  input,select{width:100%;padding:12px 13px;border:2px solid #f0e6d4;border-radius:13px;font-size:14px;background:#fffdf9;
+               color:var(--ink);font-family:"Poppins";transition:border-color .2s ease,box-shadow .2s ease;}
+  input:focus,select:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 4px rgba(255,107,53,.12);}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  .photo{border:2px dashed #e6d4ff;border-radius:16px;padding:14px;display:flex;gap:14px;align-items:center;background:#faf6ff;}
+  .photo img{width:84px;height:84px;object-fit:cover;border-radius:12px;}
+
+  /* ---------- reveal on scroll ---------- */
+  .reveal{opacity:0;transform:translateY(40px) scale(.94) rotate(-1deg);transition:opacity .75s cubic-bezier(.2,.7,.2,1),transform .75s cubic-bezier(.2,.7,.2,1);}
+  .reveal.in{opacity:1;transform:translateY(0) scale(1) rotate(0);}
+  .reveal-left{opacity:0;transform:translateX(-50px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1);}
+  .reveal-left.in{opacity:1;transform:translateX(0);}
+  .reveal-right{opacity:0;transform:translateX(50px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1);}
+  .reveal-right.in{opacity:1;transform:translateX(0);}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:20px;}
+  .stat{border-radius:20px;padding:22px;color:#fff;position:relative;overflow:hidden;transition:transform .3s ease;}
+  .stat:hover{transform:translateY(-6px) scale(1.02);}
+  .stat b{display:block;font-size:34px;font-family:"Fredoka";} .stat span{font-size:12.5px;opacity:.95;}
+  .s1{background:linear-gradient(135deg,#ff9a3c,#ff6b35)} .s2{background:linear-gradient(135deg,#12b3a8,#2fb344)}
+  .s3{background:linear-gradient(135deg,#8e7dff,#6c5ce7)} .s4{background:linear-gradient(135deg,#f06fa4,#e83e8c)}
+
+  /* ---------- badges ---------- */
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 13px;border-radius:99px;font-size:11.5px;font-weight:700;}
+  .matched{background:#fff1c9;color:#8a5a00} .picked_up{background:#dbe9ff;color:#1d4ed8}
+  .delivered{background:#d3f5dc;color:#166534} .unmatched{background:#ffd9de;color:#b42318}
+  .urgent{animation:pulse 1.1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+
+  /* ---------- job / product-style cards ---------- */
+  .job{display:flex;gap:14px;align-items:center;}
+  .thumb,.ph{width:72px;height:72px;border-radius:14px;object-fit:cover;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none;}
+  .job .info{flex:1;} .muted{color:var(--muted);font-size:13px;}
+  .hidden{display:none;}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #f4ecdd;}
+  td img{width:40px;height:40px;border-radius:10px;object-fit:cover;}
+  tr{transition:background .2s ease;} tbody tr:hover{background:#fffaf0;}
+
+  .bar{height:10px;border-radius:99px;background:#f0e6d4;overflow:hidden;margin:4px 0 12px;}
+  .bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--green));
+         transition:width 1s cubic-bezier(.2,.8,.2,1);}
+  .rec-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .rec-row .ic{width:38px;height:38px;border-radius:50%;background:var(--green-soft);display:flex;align-items:center;justify-content:center;flex:none;font-size:17px;}
+  .rec-row .info{flex:1;}
+
+  /* ---------- CTA banner ---------- */
+  .cta-banner{background:linear-gradient(120deg,var(--green),#0c2c21);border-radius:22px;padding:26px 30px;
+              display:flex;align-items:center;gap:20px;flex-wrap:wrap;color:#fff;margin:10px 0 30px;position:relative;overflow:hidden;}
+  .cta-banner::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 30%,rgba(242,177,52,.18),transparent 55%);}
+  .cta-banner b{font-family:"Fredoka";font-size:19px;font-weight:600;display:block;}
+  .cta-banner .perks{display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;color:#d9ece2;position:relative;z-index:1;}
+  .cta-banner .perks span{display:flex;align-items:center;gap:6px;}
+  .cta-banner .cta-right{margin-left:auto;position:relative;z-index:1;}
+
+  /* ---------- result / confetti ---------- */
+  #result{position:relative;}
+  .pop{animation:popCard .5s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes popCard{from{opacity:0;transform:translateY(16px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+  .confetti{position:fixed;top:-20px;font-size:20px;pointer-events:none;z-index:80;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(105vh) rotate(360deg);opacity:.2;}}
+
+  @media(max-width:760px){
+    .hero{grid-template-columns:1fr;padding-top:26px;} .hero-art{order:-1;height:170px;}
+    .hero h1{font-size:32px;}
+    .row{grid-template-columns:1fr;}
+    .cta-banner{padding:22px;} .cta-banner .cta-right{margin-left:0;width:100%;} .cta-banner .cta-right .btn{width:100%;}
+    .brand span{display:none;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;}
+  }
+
+
+  .emergency-board{margin:4px 0 18px;border:2px solid #ffd4a8;background:linear-gradient(135deg,#fffaf2,#fff);}
+  .emergency-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+  .emergency-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;}
+  .emergency-item{background:#fff;border:1px solid #f1dfc5;border-radius:16px;padding:14px;box-shadow:var(--shadow-sm);}
+  .emergency-item.critical{border-color:#ffb3b3;background:#fff8f8;}
+  .emergency-item .need-title{font-family:"Fredoka";font-size:17px;}
+  .scan-modal{position:fixed;inset:0;background:rgba(28,27,22,.58);backdrop-filter:blur(5px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .scan-modal.hidden{display:none;}
+  .scan-card{width:min(520px,100%);background:#fff;border-radius:24px;padding:24px;box-shadow:var(--shadow-lg);}
+  .scan-check{font-size:48px;text-align:center;margin-bottom:4px;}
+  .scan-details{background:var(--cream);border-radius:16px;padding:14px;margin:14px 0;}
+  .scan-details div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;}
+  .driver-qr{display:flex;align-items:center;gap:12px;margin-top:10px;padding:10px;border-radius:14px;background:#fff8ec;border:1px dashed #f0c98b;}
+  .driver-qr .qr-code{width:105px;min-height:105px;}
+  @media(max-width:760px){.emergency-grid{grid-template-columns:1fr;}.scan-details div{flex-direction:column;gap:1px;}}
+
+  /* ---------- splash ---------- */
+  .splash{position:fixed;inset:0;background:var(--cream);z-index:300;display:flex;align-items:center;justify-content:center;
+          transition:opacity .5s ease;}
+  .splash.out{opacity:0;pointer-events:none;}
+  .splash-inner{text-align:center;animation:splashPop .7s cubic-bezier(.34,1.56,.64,1);}
+  .splash-inner .mascot{font-size:64px;display:block;animation:bob 1.3s ease-in-out infinite;}
+  .splash-inner b{font-family:"Fredoka";font-size:22px;display:block;margin-top:10px;}
+  @keyframes splashPop{from{opacity:0;transform:scale(.55);}to{opacity:1;transform:scale(1);}}
+
+  /* ---------- toasts ---------- */
+  .toast-wrap{position:fixed;bottom:20px;right:20px;left:auto;display:flex;flex-direction:column;gap:10px;z-index:250;max-width:calc(100vw - 40px);}
+  .toast{background:#fff;border-radius:14px;padding:12px 18px;box-shadow:var(--shadow-lg);font-size:13.5px;font-weight:600;
+         border-left:4px solid var(--teal);animation:toastIn .4s cubic-bezier(.34,1.56,.64,1);}
+  .toast.error{border-left-color:var(--red);}
+  .toast.out{animation:toastOut .35s ease forwards;}
+  @keyframes toastIn{from{opacity:0;transform:translateX(70px) scale(.9);}to{opacity:1;transform:translateX(0) scale(1);}}
+  @keyframes toastOut{to{opacity:0;transform:translateX(70px) scale(.9);}}
+
+  /* ---------- skeletons ---------- */
+  .skeleton{background:linear-gradient(100deg,#f4ecdd 30%,#fbf3e4 50%,#f4ecdd 70%);background-size:200% 100%;
+            animation:shimmer 1.3s ease-in-out infinite;border-radius:16px;}
+  @keyframes shimmer{to{background-position:-200% 0;}}
+  .skel-job{height:100px;margin-bottom:16px;}
+  .skel-row{height:44px;margin-bottom:10px;}
+  .skel-stat{height:112px;}
+
+  /* ---------- empty states ---------- */
+  .empty{text-align:center;padding:44px 20px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-sm);}
+  .empty-icon{font-size:42px;display:block;margin-bottom:10px;animation:bob 2.4s ease-in-out infinite;}
+  .empty b{display:block;font-family:"Fredoka";font-size:16.5px;margin-bottom:4px;}
+  .empty p{margin:0;}
+
+  /* ---------- journey stepper ---------- */
+  .stepper{display:flex;align-items:flex-start;margin-top:10px;}
+  .stepper .step{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;position:relative;}
+  .stepper .line{position:absolute;top:9px;left:-50%;width:100%;height:2px;background:#f0e6d4;z-index:0;transition:background .4s ease;}
+  .stepper .step:first-child .line{display:none;}
+  .stepper .dot{width:20px;height:20px;border-radius:50%;background:#f0e6d4;border:2px solid #f0e6d4;display:flex;
+                align-items:center;justify-content:center;font-size:10px;color:#fff;z-index:1;transition:all .4s ease;}
+  .stepper .step.done .dot{background:var(--green);border-color:var(--green);}
+  .stepper .step.done .line{background:var(--green);}
+  .stepper .step.current .dot{background:var(--orange);border-color:var(--orange);animation:pulse 1.1s ease-in-out infinite;}
+  .stepper .step.failed .dot{background:var(--red);border-color:var(--red);}
+  .stepper .step small{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;}
+  .stepper .step.done small,.stepper .step.current small,.stepper .step.failed small{color:var(--ink);}
+
+/* ===== Advanced feature layer ===== */
+.advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.feature-card{background:#fff;border-radius:20px;padding:20px;box-shadow:var(--shadow-sm)}
+.feature-card h3{display:flex;justify-content:space-between;align-items:center}.pill{padding:5px 10px;border-radius:99px;background:var(--green-soft);font-size:11px;font-weight:700;color:var(--green)}
+.countdown{font-family:"Fredoka";font-size:20px;color:var(--orange)}.map-box{height:360px;border-radius:18px;overflow:hidden;background:#eee}.notification-panel{max-height:330px;overflow:auto}.notif{padding:12px;border-bottom:1px solid #f0e6d4}.notif small{display:block;color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(28,27,22,.5);display:none;align-items:center;justify-content:center;z-index:500;padding:20px}.modal.show{display:flex}.modal-card{background:#fff;border-radius:24px;padding:26px;max-width:430px;width:100%;box-shadow:var(--shadow-lg)}
+.auth-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.metric{padding:16px;border-radius:16px;background:var(--cream2)}.metric b{font-family:"Fredoka";font-size:24px;display:block}.status-line{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.status-chip{padding:5px 9px;border-radius:99px;background:#f4ecdd;font-size:11px;font-weight:700}.status-chip.active{background:#d3f5dc;color:#166534}
+@media(max-width:760px){.advanced-grid,.metric-grid{grid-template-columns:1fr}.map-box{height:280px}}
+
+  .track-link{display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-weight:700;cursor:pointer;text-decoration:none;margin-top:5px}
+  .track-link:hover{text-decoration:underline}
+  .tracking-panel{margin-top:12px;padding:12px;border-radius:14px;background:#f5f9ff;border:1px solid #dbeafe}
+  .tracking-panel b{font-size:13px}
+  .tracking-dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:#3b82f6;box-shadow:0 0 0 5px rgba(59,130,246,.12);margin-right:6px}
+
+  /* ---------- judge showcase feature layer ---------- */
+  .showcase{margin-top:20px}.showcase-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+  .show-card{background:#fff;border-radius:20px;padding:20px;box-shadow:var(--shadow-sm);border:1px solid #f2e9db;min-height:190px}
+  .show-card h3{margin:0 0 7px;font-family:"Fredoka";font-size:18px}.show-card p{margin:0 0 12px}.show-card .big{font-family:"Fredoka";font-size:30px;display:block}
+  .show-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f1e8da;font-size:13px}.show-row:last-child{border-bottom:0}
+  .alert{padding:10px 12px;border-radius:12px;margin:7px 0;background:#fff4e5}.alert.critical{background:#ffe1e1;color:#8f1d1d}
+  .feature-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.mini-input{width:100%;padding:9px 11px;border:1px solid #e7dccb;border-radius:10px;background:#fff}
+  .qr-box{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.qr-code{width:150px;min-height:150px;padding:8px;background:#fff;border-radius:12px;border:1px solid #eee;display:flex;align-items:center;justify-content:center}
+  .route-stop{display:flex;gap:9px;align-items:center;padding:8px 0;border-bottom:1px dashed #e8dece}.rank{font-family:"Fredoka";font-size:20px;width:32px}
+  .confidence{height:8px;background:#eee7db;border-radius:99px;overflow:hidden;margin:8px 0}.confidence i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:99px}
+  .feature-note{font-size:11px;color:var(--muted);margin-top:8px}
+  @media(max-width:760px){.feature-grid{grid-template-columns:1fr}.qr-box{align-items:flex-start}}
+
+  /* ---------- mobile-first polish ---------- */
+  .qr-scanner-card{border:2px solid #d9eee3;background:linear-gradient(135deg,#fbfffc,#f3fbf6);}
+  .qr-reader-wrap{background:#111;border-radius:18px;overflow:hidden;margin:14px 0;min-height:0;}
+  #qrReader{width:100%;min-height:0;}
+  #qrReader video{width:100%!important;height:auto!important;max-height:360px;object-fit:cover;border-radius:16px;}
+  .qr-scan-status{padding:11px 13px;border-radius:12px;background:#fff;margin-top:10px;font-size:12.5px;color:var(--muted);}
+  .qr-scan-status.live{background:#e8f8ee;color:#166534;font-weight:700;}
+  .scan-success{padding:18px;border-radius:18px;background:#e9f9ee;border:1px solid #b9e5c7;text-align:center;}
+  .scan-success .big-check{font-size:54px;line-height:1;margin-bottom:8px;}
+  .scan-success b{font-family:"Fredoka";font-size:23px;display:block;}
+  .mobile-only-note{display:none;}
+  @media(max-width:760px){
+    body{font-size:14px;overflow-x:hidden;}
+    .topbar{position:sticky;top:0;z-index:80;display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 10px;background:rgba(255,248,236,.97);}
+    .brand{min-width:0;margin:0;gap:8px;} .brand .mascot{font-size:25px;} .brand b{font-size:16px;} .brand span{display:none;}
+    #resetBtn{padding:8px 11px;font-size:11px;white-space:nowrap;}
+    .tabs{grid-column:1/-1;width:100%;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .tabs::-webkit-scrollbar{display:none;} .tabs button{flex:1 0 auto;min-width:92px;padding:9px 10px;font-size:12px;}
+    main{width:100%;padding:0 10px 35px;} .hero{display:block;padding:24px 2px 18px;} .hero-art{display:none;}
+    .hero h1{font-size:34px;line-height:1.05;margin-bottom:10px;} .hero p{font-size:13.5px;line-height:1.55;margin-bottom:16px;} .hero .btn{width:100%;}
+    .chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:5px 0 16px;} .chip{min-width:0;} .chip .circle{width:48px;height:48px;font-size:22px;} .chip small{font-size:10.5px;text-align:center;}
+    .card{padding:16px;border-radius:17px;margin-bottom:12px;} .row{grid-template-columns:1fr!important;gap:0;}
+    label{font-size:11.5px;margin-top:11px;} input,select{font-size:16px;min-height:46px;padding:11px 12px;} .btn{min-height:44px;}
+    .emergency-board{padding:15px!important;} .emergency-head h2{font-size:18px;} .emergency-item{padding:13px;} .emergency-item .need-title{font-size:15.5px;} .emergency-item .btn{width:100%;}
+    .qr-scanner-card{padding:15px!important;} .qr-scanner-card .feature-actions{display:grid;grid-template-columns:1fr 1fr;} .qr-scanner-card .feature-actions .btn{width:100%;}
+    .qr-reader-wrap{margin-left:-2px;margin-right:-2px;} #qrReader video{max-height:310px;}
+    .scan-modal{padding:10px;align-items:flex-end;} .scan-card{width:100%;max-height:92vh;overflow:auto;border-radius:24px 24px 12px 12px;padding:18px;}
+    .scan-card h2{font-size:20px;} .scan-details{padding:12px;margin:10px 0;} .scan-details div{display:grid!important;grid-template-columns:90px 1fr;gap:8px!important;align-items:center;}
+    .scan-card .btn{width:100%;} .scan-card>div[style*="display:flex"]{display:grid!important;grid-template-columns:1fr;}
+    .advanced-grid,.feature-grid{grid-template-columns:1fr;} .metric-grid{grid-template-columns:repeat(2,1fr);} .metric{padding:13px;} .metric b{font-size:21px;}
+    .map-box{height:300px;} .show-card{padding:16px;min-height:0;} .showcase-head h2{font-size:20px!important;}
+    .cta-banner{padding:18px;border-radius:18px;} .cta-banner .perks{gap:8px;flex-direction:column;}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;} table{min-width:600px;} .job{align-items:flex-start;flex-wrap:wrap;} .job .info{min-width:0;} .job>.btn{width:100%;}
+    .driver-qr{flex-direction:column;align-items:flex-start;} .mobile-only-note{display:block;}
+  }
+
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash"><div class="splash-inner"><span class="mascot">🍲</span><b>Surplus-to-Shelter</b></div></div>
+<div id="pickupApprovalModal" class="scan-modal hidden" role="dialog" aria-modal="true">
+  <div class="scan-card">
+    <div class="scan-check">🔐</div>
+    <h2 style="text-align:center;margin:0">Donor Pickup Approval</h2>
+    <p id="scanSubtitle" class="muted" style="text-align:center">Review the parcel before allowing pickup.</p>
+    <div id="scanDetails" class="scan-details"><span class="muted">Loading…</span></div>
+    <div id="scanSuccess" class="scan-success hidden">
+      <div class="big-check">✅</div>
+      <b>Pickup confirmed!</b>
+      <div class="muted" style="margin-top:5px">The donor approved the handover and the parcel is now marked as picked up.</div>
+    </div>
+    <div id="scanActions" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="closePickupApproval()">Not now</button>
+      <button class="btn btn-orange" id="approvePickupBtn" onclick="approveScannedPickup()">✅ Allow & complete pickup</button>
+    </div>
+    <p id="scanFooter" class="feature-note" style="text-align:center;margin-top:12px">Only approve after you have physically handed the parcel to the driver.</p>
+  </div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<header class="topbar">
+  <div class="brand"><span class="mascot">🍲</span><div><b>Surplus-to-Shelter</b><span>Rescue food, feed hope</span></div></div>
+  <div class="tabs" id="tabs">
+    <span class="tab-underline" id="underline"></span>
+    <button class="active" data-tab="donor">🍱 Donor</button>
+    <button data-tab="driver">🚚 Driver</button>
+    <button data-tab="dashboard">📊 Dashboard</button>
+  </div>
+  <button class="btn btn-ghost" id="resetBtn">↺ Reset demo</button>
+</header>
+
+<main>
+  <section id="donor">
+    <div class="hero">
+      <div class="reveal-left in">
+        <h1>Extra Food,<span class="accent">Extra Hope</span></h1>
+        <p>Post surplus food in seconds — we match it to a nearby shelter and a driver before it spoils.</p>
+        <button class="btn btn-dark" onclick="document.getElementById('formCard').scrollIntoView({behavior:'smooth'})">Post a donation ↓</button>
+      </div>
+      <div class="hero-art reveal-right in" id="heroArt">
+        <span class="doodle d1" data-depth="18">🍅</span><span class="doodle d2" data-depth="30">✨</span><span class="doodle d3" data-depth="14">🥕</span><span class="doodle d4" data-depth="24">💚</span>
+        <span class="plate">🍛</span>
+        <div class="mini-card"><span class="ic">🚚</span><div><b>Fast pickup</b><span>Verified recipients</span></div></div>
+      </div>
+    </div>
+
+    <div class="chips" id="chips">
+      <button class="chip" data-fill="Cooked meal"><span class="circle" style="background:#FFE3D2">🍛</span><small>Cooked meal</small></button>
+      <button class="chip" data-fill="Bakery items"><span class="circle" style="background:#FDEBC8">🥖</span><small>Bakery</small></button>
+      <button class="chip" data-fill="Fresh produce"><span class="circle" style="background:#E3F3DF">🥗</span><small>Produce</small></button>
+      <button class="chip" data-fill="Packaged goods"><span class="circle" style="background:#E6E3FB">📦</span><small>Packaged</small></button>
+      <button class="chip" data-fill="Beverages"><span class="circle" style="background:#DCF1F0">🥤</span><small>Beverages</small></button>
+      <button class="chip" data-fill="Desserts"><span class="circle" style="background:#FBE1EC">🍰</span><small>Desserts</small></button>
+    </div>
+
+    <div class="card emergency-board reveal" id="donorEmergencyBoard">
+      <div class="emergency-head"><div><h2 style="margin:0">🚨 Emergency food needs near you</h2><p class="muted" style="margin:4px 0 0">See urgent shelter requirements on the spot and fulfill one in a single click.</p></div><span class="pill" id="emergencyCount">Live needs</span></div>
+      <div id="donorEmergencyList" class="emergency-grid"><span class="muted">Loading urgent requirements…</span></div>
+    </div>
+    <input type="hidden" id="emergency_id" value="">
+
+    <div class="card qr-scanner-card reveal" id="donorQrScanner">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <h2 style="margin:0 0 4px">📷 Scan pickup QR</h2>
+          <p class="muted" style="margin:0">Driver shows the QR. Scan it from your phone, verify the parcel, then approve pickup.</p>
+        </div>
+        <span class="pill">Donor verification</span>
+      </div>
+      <div id="qrReaderWrap" class="qr-reader-wrap hidden"><div id="qrReader"></div></div>
+      <div id="qrScanStatus" class="qr-scan-status">Camera is off. Tap <b>Scan QR</b> when the driver is ready.</div>
+      <div class="feature-actions">
+        <button class="btn btn-dark btn-sm" id="startQrBtn" type="button" onclick="startDonorQrScanner()">📷 Scan QR</button>
+        <button class="btn btn-ghost btn-sm hidden" id="stopQrBtn" type="button" onclick="stopDonorQrScanner()">✕ Stop camera</button>
+      </div>
+      <div class="mobile-only-note muted" style="margin-top:9px">Tip: On your phone, allow camera access when the browser asks.</div>
+    </div>
+
+    <div class="card reveal" id="formCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div><h2 style="margin-bottom:3px">Post surplus food</h2><small class="muted">⚡ Quick Donate keeps your details saved for the next donation.</small></div>
+        <button class="btn btn-dark btn-sm" id="quickFillBtn" type="button">⚡ Quick Fill</button>
+      </div>
+      <label>Your name / business</label><input id="donor_name" placeholder="Spice Cafe">
+      <label>What food is it?</label><input id="description" placeholder="40 portions dal and rice">
+      <div class="row"><div><label>Food category</label><select id="category"><option value="any">Any</option><option value="cooked meal">Cooked meal</option><option value="bakery">Bakery</option><option value="produce">Fresh produce</option><option value="packaged goods">Packaged goods</option><option value="beverages">Beverages</option><option value="desserts">Desserts</option></select></div><div><label>Phone for SMS</label><input id="donor_phone" placeholder="+91XXXXXXXXXX"></div></div>
+      <label>Email for instant confirmation <span class="muted">(saved on this device)</span></label><input id="donor_email" type="email" autocomplete="email" placeholder="you@example.com">
+      <div class="row">
+        <div><label>Quantity (kg)</label><input id="quantity_kg" type="number" min="0.5" step="0.5" value="10"></div>
+        <div><label>Safe to donate for</label><select id="expires">
+          <option value="60">1 hour</option><option value="120">2 hours</option><option value="180" selected>3 hours</option><option value="360">6 hours</option></select></div>
+      </div>
+      <div class="row">
+        <div><label>Latitude</label><input id="lat" type="number" step="any" value="26.9124"></div>
+        <div><label>Longitude</label><input id="lng" type="number" step="any" value="75.7873"></div>
+      </div>
+      <button class="btn btn-ghost" id="geoBtn" type="button" style="margin-top:12px">📍 Use my location</button>
+      <label>Food photo (optional)</label>
+      <div class="photo"><img id="preview" class="hidden" alt="preview"><input id="photo" type="file" accept="image/*"></div>
+      <button class="btn btn-orange" id="submitBtn" type="button" style="margin-top:20px;width:100%">⚡ Post donation</button>
+    </div>
+    <div id="result"></div>
+  </section>
+
+  <section id="driver" class="hidden">
+    <div class="card reveal"><h2>🚚 Driver dispatch</h2><p class="muted">Active pickups. Driver location can be shared from this device and viewed live by clicking <b>Track</b>.</p><button class="btn btn-dark btn-sm" onclick="startDriverGPS()">📍 Start live location sharing</button><span id="gpsStatus" class="muted" style="margin-left:10px">Not sharing</span></div>
+    <div id="jobs"></div>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <div class="stats" id="stats"></div>
+    <div class="card reveal"><h3>🏠 Recipient capacity left</h3><div id="recipients"></div></div>
+    <div class="card reveal"><h3>📋 All donations</h3><div id="all"></div></div>
+
+
+    <div class="advanced-grid reveal" style="margin-top:20px">
+      <div class="feature-card">
+        <h3>🔔 Notification Center <span class="pill">SMS + Email</span></h3>
+        <p class="muted">Match, pickup, delivery and expiry notifications.</p>
+        <div id="notificationPanel" class="notification-panel"></div>
+        <div class="auth-actions"><button class="btn btn-ghost btn-sm" onclick="testNotify('email')">Test Email</button><button class="btn btn-ghost btn-sm" onclick="testNotify('sms')">Test SMS</button></div>
+      </div>
+      <div class="feature-card">
+        <h3>🤖 Smart Match</h3>
+        <p class="muted">Matching considers distance, capacity, category and expiry safety.</p>
+        <div class="metric-grid"><div class="metric"><b id="smartScore">—</b><span class="muted">Latest match score</span></div><div class="metric"><b id="activeCount">0</b><span class="muted">Active pickups</span></div><div class="metric"><b id="rescuedCount">0</b><span class="muted">Meals rescued</span></div></div>
+      </div>
+    </div>
+    <div class="card reveal" style="margin-top:20px">
+      <h3>🗺️ Live Logistics Map</h3><p class="muted">Donor → Driver → Shelter. Demo markers update from the backend.</p><div id="liveMap" class="map-box"></div>
+    </div>
+
+    <div class="showcase reveal" id="showcase">
+      <div class="showcase-head"><div><h2 style="margin:0">🚀 Intelligent Rescue Command Center</h2><p class="muted">AI assistance, safety alerts, demand planning, verification and measurable impact — all in one view.</p></div><span class="pill">12 advanced features</span></div>
+      <div class="feature-grid">
+        <div class="show-card"><h3>🤖 AI Food Quality Check</h3><p class="muted">Get a category and handling checklist from the food description.</p><div id="aiCheckResult"><span class="muted">Post or enter food details, then run the check.</span></div><div class="feature-actions"><button class="btn btn-dark btn-sm" onclick="runFoodCheck()">Analyze food</button></div></div>
+        <div class="show-card"><h3>🚨 Expiry Alert System</h3><p class="muted">Prioritizes donations with the shortest safe window.</p><div id="expiryAlerts"><span class="muted">Loading alerts…</span></div></div>
+        <div class="show-card"><h3>🏆 Donor Leaderboard</h3><p class="muted">Recognition based on delivered food, not just posted food.</p><div id="leaderboard"><span class="muted">Loading contributors…</span></div></div>
+        <div class="show-card"><h3>🌱 Carbon Footprint Saved</h3><div id="carbonImpact"><span class="muted">Calculating impact…</span></div><div class="feature-note">Estimated project metric; methodology is shown for transparency.</div></div>
+        <div class="show-card"><h3>🧠 Demand Prediction</h3><p class="muted">Uses current shelter capacity, emergency needs and recent donation mix.</p><div id="demandPrediction"><span class="muted">Loading forecast…</span></div></div>
+        <div class="show-card"><h3>🚚 Route Optimization</h3><p class="muted">Builds a short nearest-stop route for the demo driver.</p><div id="routeOptimization"><span class="muted">Loading route…</span></div></div>
+        <div class="show-card"><h3>🏥 Emergency Food Request</h3><p class="muted">Shelters can raise urgent needs and feed them into demand planning.</p><select id="emShelter" class="mini-input"></select><div class="row" style="margin-top:8px"><input id="emFood" placeholder="Food type e.g. cooked meal"><input id="emQty" type="number" min="1" value="20" placeholder="kg"></div><div class="row" style="margin-top:8px"><input id="emPeople" type="number" min="1" value="40" placeholder="people"><select id="emUrgency"><option>high</option><option>critical</option><option>medium</option></select></div><div class="feature-actions"><button class="btn btn-orange btn-sm" onclick="createEmergencyRequest()">Raise emergency request</button></div><div id="emergencyList" style="margin-top:8px"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="cta-banner reveal">
+    <div>
+      <b>Because every meal deserves a second chance</b>
+      <div class="perks"><span>🌱 Fresh, safe food</span><span>👨‍🍳 Verified recipients</span><span>🚴 Fast pickup</span></div>
+    </div>
+    <div class="cta-right"><button class="btn btn-orange" onclick="document.querySelector('[data-tab=dashboard]').click()">See impact →</button></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+function el(tag, props = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, props); kids.forEach(k => e.append(k)); return e; }
+async function api(path, method = "GET", body) {
+  const res = await fetch(path, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Something went wrong");
+  return data;
+}
+const badge = s => { const b = el("span", { className: "badge " + s, textContent: s.replace("_", " ") }); return b; };
+const thumb = d => d.photo ? el("img", { src: d.photo, alt: d.description, className:"thumb" }) : el("div", { className: "ph", textContent: "🍽️" });
+const minsLeft = d => Math.max(0, Math.round((new Date(d.expires_at) - Date.now()) / 60000));
+
+/* ---------------- splash screen ---------------- */
+window.addEventListener("load", () => setTimeout(() => {
+  $("splash").classList.add("out");
+  setTimeout(() => $("splash") && $("splash").remove(), 550);
+}, 850));
+
+/* ---------------- toast notifications ---------------- */
+function toast(msg, type = "success") {
+  const t = el("div", { className: "toast" + (type === "error" ? " error" : ""), textContent: (type === "error" ? "⚠️ " : "✅ ") + msg });
+  $("toastWrap").appendChild(t);
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 350); }, 3200);
+}
+
+/* ---------------- empty states ---------------- */
+function emptyState(icon, title, sub) {
+  return el("div", { className: "empty" }, el("span", { className: "empty-icon", textContent: icon }),
+    el("b", { textContent: title }), el("p", { className: "muted", textContent: sub }));
+}
+
+/* ---------------- donation journey stepper ---------------- */
+function stepper(status) {
+  const order = ["posted", "matched", "picked_up", "delivered"];
+  const labels = { posted: "Posted", matched: "Matched", picked_up: "Picked up", delivered: "Delivered" };
+  const unmatched = status === "unmatched";
+  const curIdx = unmatched ? 1 : (status === "delivered" ? 4 : order.indexOf(status));
+  const wrap = el("div", { className: "stepper" });
+  order.forEach((key, i) => {
+    let cls = "step";
+    if (unmatched && i === 1) cls += " failed";
+    else if (i < curIdx) cls += " done";
+    else if (i === curIdx && !unmatched) cls += " current";
+    const dotText = cls.includes("failed") ? "✕" : (cls.includes("done") ? "✓" : "");
+    wrap.appendChild(el("div", { className: cls }, el("span", { className: "line" }), el("span", { className: "dot", textContent: dotText }), el("small", { textContent: labels[key] })));
+  });
+  return wrap;
+}
+
+/* ---------------- nav tabs + sliding underline ---------------- */
+const tabsWrap = $("tabs"), underline = $("underline");
+function moveUnderline(btn) {
+  underline.style.width = btn.offsetWidth + "px";
+  underline.style.left = btn.offsetLeft + "px";
+}
+document.querySelectorAll("#tabs button[data-tab]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button[data-tab]").forEach(x => x.classList.toggle("active", x === b));
+  moveUnderline(b);
+  if (b.dataset.tab === "driver") jobsLoaded = false;
+  if (b.dataset.tab === "dashboard") dashLoaded = false;
+  ["donor", "driver", "dashboard"].forEach(t => $(t).classList.toggle("hidden", t !== b.dataset.tab));
+  if(b.dataset.tab === "dashboard"){ setTimeout(()=>{ initAdvancedMap(); if(advancedMap) advancedMap.invalidateSize(); refreshMap(); }, 120); }
+  refresh(); revealObserve();
+});
+window.addEventListener("load", () => moveUnderline(document.querySelector("#tabs button.active")));
+window.addEventListener("resize", () => moveUnderline(document.querySelector("#tabs button.active")));
+
+/* ---------------- scroll reveal ---------------- */
+const io = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: .15 });
+function revealObserve(){ document.querySelectorAll(".reveal:not(.in), .reveal-left:not(.in), .reveal-right:not(.in)").forEach(elm => io.observe(elm)); }
+revealObserve();
+
+/* ---------------- ripple on every button, site-wide ---------------- */
+document.addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 1.4;
+  const r = el("span", { className: "ripple" });
+  r.style.width = r.style.height = size + "px";
+  r.style.left = (e.clientX - rect.left - size / 2) + "px";
+  r.style.top = (e.clientY - rect.top - size / 2) + "px";
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 650);
+});
+
+/* ---------------- parallax on hero doodles + scroll-driven header shrink ---------------- */
+let ticking = false;
+window.addEventListener("scroll", () => {
+  if (ticking) return; ticking = true;
+  requestAnimationFrame(() => {
+    const y = window.scrollY;
+    document.querySelectorAll("#heroArt .doodle").forEach(d => {
+      const depth = parseFloat(d.dataset.depth) || 20;
+      d.style.transform = `translateY(${y / depth}px)`;
+    });
+    document.querySelector(".topbar").style.boxShadow = y > 8 ? "0 6px 18px rgba(28,27,22,.08)" : "none";
+    ticking = false;
+  });
+});
+
+/* ---------------- category chips quick-fill ---------------- */
+document.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+  document.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+  c.classList.add("active");
+  $("description").value = c.dataset.fill; $("description").focus();
+});
+
+/* ---------------- live emergency needs for donors ---------------- */
+let donorEmergencyCache=[];
+async function loadDonorEmergencyNeeds(){
+  const box=$("donorEmergencyList"); if(!box) return;
+  try{
+    const list=(await api('/features/emergency')).filter(x=>x.status==='open');
+    donorEmergencyCache=list;
+    $("emergencyCount").textContent=list.length ? `${list.length} urgent need${list.length===1?'':'s'}` : 'No open needs';
+    box.innerHTML=list.length ? list.slice(0,6).map(e=>`<div class="emergency-item ${e.urgency==='critical'?'critical':''}">
+      <div class="need-title">${e.urgency==='critical'?'🔴':'🟠'} ${e.food_type} · ${e.quantity_kg} kg</div>
+      <div class="muted" style="margin:5px 0">🏠 ${e.shelter} · 👥 ${e.people} people</div>
+      <small class="muted">${e.urgency.toUpperCase()} priority</small>
+      <div style="margin-top:10px"><button class="btn btn-orange btn-sm" onclick="fulfillEmergency(${e.id})">🍱 Fulfill this need</button></div>
+    </div>`).join('') : '<div class="empty" style="grid-column:1/-1;padding:25px"><span class="empty-icon">💚</span><b>No emergency needs right now</b><p class="muted">New urgent shelter requirements will appear here automatically.</p></div>';
+  }catch(e){ box.innerHTML='<span class="muted">Emergency board temporarily unavailable.</span>'; }
+}
+function fulfillEmergency(id){
+  const e=donorEmergencyCache.find(x=>x.id===id); if(!e) return;
+  $("emergency_id").value=e.id;
+  $("description").value=`${e.food_type} for ${e.people} people`;
+  $("quantity_kg").value=e.quantity_kg;
+  const c=e.food_type.toLowerCase(); $("category").value=['cooked meal','bakery','produce','packaged goods','beverages','desserts'].includes(c)?c:'any';
+  document.getElementById('formCard').scrollIntoView({behavior:'smooth',block:'start'});
+  toast(`🚨 ${e.quantity_kg} kg ${e.food_type} selected for ${e.shelter}`);
+}
+
+/* ---------------- quick donate / saved donor profile ---------------- */
+const donorStorageKey = "surplus_to_shelter_donor_v2";
+function saveDonorPrefs(){
+  try{
+    localStorage.setItem(donorStorageKey, JSON.stringify({
+      donor_name:$('donor_name').value.trim(), donor_email:$('donor_email').value.trim(),
+      donor_phone:$('donor_phone').value.trim(), category:$('category').value,
+      quantity_kg:$('quantity_kg').value, expires:$('expires').value,
+      lat:$('lat').value, lng:$('lng').value
+    }));
+  }catch(e){}
+}
+function restoreDonorPrefs(){
+  try{
+    const p=JSON.parse(localStorage.getItem(donorStorageKey)||"null"); if(!p) return;
+    if(p.donor_name) $('donor_name').value=p.donor_name;
+    if(p.donor_email) $('donor_email').value=p.donor_email;
+    if(p.donor_phone) $('donor_phone').value=p.donor_phone;
+    if(p.category) $('category').value=p.category;
+    if(p.quantity_kg) $('quantity_kg').value=p.quantity_kg;
+    if(p.expires) $('expires').value=p.expires;
+    if(p.lat) $('lat').value=p.lat;
+    if(p.lng) $('lng').value=p.lng;
+  }catch(e){}
+}
+function quickFill(){
+  restoreDonorPrefs();
+  if(!$('donor_name').value) $('donor_name').value="Quick Donor";
+  if(!$('description').value) $('description').value="Cooked meal";
+  if(!$('quantity_kg').value) $('quantity_kg').value="10";
+  if(!$('expires').value) $('expires').value="180";
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(p=>{
+      $('lat').value=p.coords.latitude.toFixed(4); $('lng').value=p.coords.longitude.toFixed(4);
+      toast("⚡ Quick Fill ready — just review and post");
+    },()=>toast("⚡ Quick Fill ready — location kept as saved/default"));
+  }else toast("⚡ Quick Fill ready — just review and post");
+}
+$('quickFillBtn').onclick=quickFill;
+restoreDonorPrefs();
+
+/* ---------------- photo upload ---------------- */
+let photoData = null;
+function shrink(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => { const img = new Image();
+      img.onload = () => { const s = Math.min(1, 600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+        c.width = img.width * s; c.height = img.height * s; c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", 0.7)); };
+      img.onerror = rej; img.src = r.result; };
+    r.onerror = rej; r.readAsDataURL(file);
+  });
+}
+$("photo").onchange = async e => {
+  const f = e.target.files[0]; if (!f) { photoData = null; $("preview").classList.add("hidden"); return; }
+  photoData = await shrink(f); $("preview").src = photoData; $("preview").classList.remove("hidden");
+};
+
+$("geoBtn").onclick = () => navigator.geolocation.getCurrentPosition(p => {
+  $("lat").value = p.coords.latitude.toFixed(4); $("lng").value = p.coords.longitude.toFixed(4);
+}, () => toast("Could not get location. Type it in instead.", "error"));
+
+/* ---------------- confetti burst ---------------- */
+function confettiBurst() {
+  const bits = ["🎉","✨","💚","🍲","⭐"];
+  for (let i = 0; i < 16; i++) {
+    const s = el("span", { className: "confetti", textContent: bits[Math.floor(Math.random()*bits.length)] });
+    s.style.left = Math.random()*100 + "vw";
+    s.style.animationDuration = (2 + Math.random()*1.5) + "s";
+    s.style.fontSize = (14 + Math.random()*14) + "px";
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 3600);
+  }
+}
+
+/* ---------------- donor submit ---------------- */
+$("submitBtn").onclick = async () => {
+  const btn = $("submitBtn"); btn.disabled = true; const original = btn.textContent; btn.textContent = "Posting…";
+  try {
+    saveDonorPrefs();
+    const d = await api("/donations", "POST", {
+      donor_name: $("donor_name").value || "Anonymous donor", description: $("description").value || "Food",
+      quantity_kg: parseFloat($("quantity_kg").value), lat: parseFloat($("lat").value), lng: parseFloat($("lng").value),
+      expires_in_minutes: parseInt($("expires").value), photo: photoData, category: $("category").value, donor_phone: $("donor_phone").value || null, donor_email: $("donor_email").value || null, emergency_request_id: $("emergency_id").value ? parseInt($("emergency_id").value) : null
+    });
+    const ok = d.status === "matched";
+    if (d.email_sent) {
+      toast("✅ Donation posted — confirmation email sent instantly to " + ($("donor_email").value || "your email"));
+    } else {
+      toast("Donation posted, but email was not sent: " + (d.email_detail || "check Resend configuration"), "error");
+    }
+    const box = el("div", { className: "card pop" },
+      el("div", { className: "job" }, thumb(d), el("div", { className: "info" },
+        el("h3", { textContent: ok ? "✅ Matched!" : "⚠️ No safe match found" }),
+        el("p", { className: ok ? "" : "muted", textContent: ok
+          ? `Recipient: ${d.recipient}  ·  Driver: ${d.driver || "waiting for a free driver"}`
+          : "No recipient can take this quantity before the food expires. Try a longer window or a smaller quantity." }))),
+      stepper(d.status));
+    $("result").replaceChildren(box);
+    $("emergency_id").value="";
+    if (ok) { confettiBurst(); toast("Donation posted and matched!"); }
+    else toast("Posted, but no recipient could fit it right now.", "error");
+  } catch (e) { toast(e.message, "error"); }
+  finally { btn.disabled = false; btn.textContent = original; }
+};
+
+/* ---------------- driver tab ---------------- */
+let jobsLoaded = false;
+function skeletonJobs(){ $("jobs").replaceChildren(...[1,2].map(() => el("div", { className: "card skeleton skel-job" }))); }
+async function loadJobs() {
+  if (!jobsLoaded) skeletonJobs();
+  const active = (await api("/donations")).filter(d => d.status === "matched" || d.status === "picked_up");
+  jobsLoaded = true;
+  if (!active.length) { $("jobs").replaceChildren(emptyState("🛵", "No active pickups", "Post a donation from the Donor tab to see it here.")); return; }
+  $("jobs").replaceChildren(...active.map((d, i) => {
+    const go = d.status === "matched" ? ["Mark picked up", "pickup"] : ["Mark delivered", "deliver"];
+    const btn = el("button", { className: "btn btn-orange btn-sm", textContent: go[0], onclick: () => act(d.id, go[1]) });
+    const mins = minsLeft(d);
+    const b = badge(d.status); if (mins <= 15) b.classList.add("urgent");
+    const driverLink = d.driver ? el("a", { className:"track-link", textContent:`📍 Track ${d.driver} live`, href:"#", onclick:(e)=>{e.preventDefault(); trackDonation(d.id);} }) : el("span", {className:"muted", textContent:"Driver not assigned"});
+    const card = el("div", { className: "card job lift reveal" }, thumb(d), el("div", { className: "info" },
+      el("b", { textContent: `#${d.id} ${d.description}` }), el("br"),
+      el("span", { className: "muted", textContent: `${d.quantity_kg} kg from ${d.donor_name} → ${d.recipient} · driver ${d.driver || "-"} · ${mins} min left` }), el("br"),
+      b, stepper(d.status), driverLink), btn);
+    card.style.transitionDelay = (i*0.05) + "s";
+    return card;
+  }));
+  revealObserve();
+  active.filter(d=>d.status==='matched').slice(0,5).forEach(d=>generateDriverPickupQR(d.id));
+}
+
+async function act(id, what) {
+  try { await api(`/donations/${id}/${what}`, "POST"); toast(what === "pickup" ? "Marked as picked up" : "Delivered — nice work!"); refresh(); }
+  catch (e) { toast(e.message, "error"); }
+}
+
+/* ---------------- real-time driver tracking ---------------- */
+let trackingTimer=null, trackingMarker=null, trackingLine=null;
+async function trackDonation(id){
+  try{
+    const t=await api(`/donations/${id}/tracking`);
+    if(!t.tracking_available){ toast(t.message || 'Driver has not been assigned yet', 'error'); return; }
+    document.querySelector('[data-tab="dashboard"]').click();
+    setTimeout(()=>{
+      initAdvancedMap();
+      if(advancedMap){
+        setTimeout(()=>advancedMap.invalidateSize(),100);
+        advancedMap.setView([t.driver_lat,t.driver_lng],14);
+        if(trackingMarker) advancedMap.removeLayer(trackingMarker);
+        if(trackingLine) advancedMap.removeLayer(trackingLine);
+        trackingMarker=L.marker([t.driver_lat,t.driver_lng]).addTo(advancedMap).bindPopup(`🚚 <b>${t.driver}</b><br>Donation #${id}<br>Last update: ${t.location_updated_at ? new Date(t.location_updated_at).toLocaleTimeString() : 'demo position'}`).openPopup();
+        if(t.recipient_lat && t.recipient_lng){
+          trackingLine=L.polyline([[t.driver_lat,t.driver_lng],[t.recipient_lat,t.recipient_lng]],{dashArray:'8 8'}).addTo(advancedMap);
+        }
+      }
+      startTracking(id);
+    },250);
+  }catch(e){toast(e.message,'error')}
+}
+function startTracking(id){
+  clearInterval(trackingTimer);
+  const poll=async()=>{
+    try{
+      const t=await api(`/donations/${id}/tracking`);
+      if(!advancedMap) return;
+      const pos=[t.driver_lat,t.driver_lng];
+      if(trackingMarker){trackingMarker.setLatLng(pos);trackingMarker.setPopupContent(`🚚 <b>${t.driver}</b><br>Donation #${id}<br>Updated: ${t.location_updated_at ? new Date(t.location_updated_at).toLocaleTimeString() : 'demo position'}`);}
+      if(trackingLine) advancedMap.removeLayer(trackingLine);
+      if(t.recipient_lat && t.recipient_lng) trackingLine=L.polyline([pos,[t.recipient_lat,t.recipient_lng]],{dashArray:'8 8'}).addTo(advancedMap);
+      if(t.status==='delivered'||t.status==='cancelled'){clearInterval(trackingTimer);toast('Tracking ended for this delivery');}
+    }catch(e){}
+  };
+  poll(); trackingTimer=setInterval(poll,3000);
+}
+
+/* ---------------- dashboard tab ---------------- */
+function countUp(node, target, suffix="") {
+  const dur = 900, start = performance.now();
+  function step(t) {
+    const p = Math.min(1, (t-start)/dur), v = Math.round(target * (1 - Math.pow(1-p, 3)));
+    node.textContent = v + suffix;
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const recIcons = {1:"🏠",2:"🍽️",3:"🍲",4:"👵"};
+let dashLoaded = false;
+function skeletonDash(){
+  $("stats").replaceChildren(...[1,2,3,4].map(() => el("div", { className: "skeleton skel-stat" })));
+  $("recipients").replaceChildren(...[1,2,3,4].map(() => el("div", { className: "skeleton skel-row" })));
+  $("all").replaceChildren(el("div", { className: "skeleton skel-row" }));
+}
+async function loadDashboard() {
+  if (!dashLoaded) skeletonDash();
+  const [imp, recs, all] = await Promise.all([api("/impact"), api("/recipients"), api("/donations")]);
+  dashLoaded = true;
+  const stat = (cls, n, label, suffix="") => {
+    const b = el("b", { textContent: "0" + suffix });
+    const card = el("div", { className: "stat " + cls }, b, el("span", { textContent: label }));
+    setTimeout(() => countUp(b, n, suffix), 60);
+    return card;
+  };
+  $("stats").replaceChildren(
+    stat("s1", imp.meals_rescued, "meals rescued (est.)"),
+    stat("s2", imp.weight_diverted_kg, "food diverted", " kg"),
+    stat("s3", imp.co2e_avoided_kg, "CO₂e avoided (est.)", " kg"),
+    stat("s4", imp.donations_delivered, "deliveries completed"));
+
+  const max = { 1: 40, 2: 25, 3: 60, 4: 15 };
+  $("recipients").replaceChildren(...recs.map(r => {
+    const bar = Object.assign(el("i"), {});
+    const row = el("div", { className: "rec-row" }, el("span", { className:"ic", textContent: recIcons[r.id] || "🏠" }),
+      el("div", { className:"info" }, el("b", { textContent: r.name }),
+        el("span", { className: "muted", textContent: `  ${r.capacity_kg} kg left` }),
+        el("div", { className: "bar" }, bar)));
+    setTimeout(() => bar.style.width = Math.min(100, r.capacity_kg / (max[r.id] || r.capacity_kg || 1) * 100) + "%", 100);
+    return row;
+  }));
+
+  const table = el("table", {}, el("tr", {}, ...["", "#", "Food", "kg", "Recipient", "Status"].map(h => el("th", { textContent: h }))));
+  all.forEach(d => table.append(el("tr", {}, el("td", {}, thumb(d)), el("td", { textContent: d.id }), el("td", { textContent: d.description }),
+    el("td", { textContent: d.quantity_kg }), el("td", { textContent: d.recipient || "-" }), el("td", {}, badge(d.status)))));
+  $("all").replaceChildren(all.length ? table : emptyState("📋", "No donations yet", "Once a donation is posted, it'll show up here."));
+  revealObserve();
+}
+
+function refresh() {
+  if (!$("driver").classList.contains("hidden")) loadJobs();
+  if (!$("dashboard").classList.contains("hidden")) loadDashboard();
+}
+setInterval(refresh, 5000);
+$("resetBtn").onclick = async () => { if (confirm("Reset all demo data?")) { await api("/reset", "POST"); jobsLoaded = false; dashLoaded = false; $("result").replaceChildren(); toast("Demo data reset"); refresh(); } };
+
+async function startDriverGPS(){
+  if(!navigator.geolocation){toast('Geolocation is not supported by this browser','error');return;}
+  const driverId=1; // demo driver; replace with logged-in driver's id after auth is enabled
+  $('gpsStatus').textContent='Requesting location permission…';
+  navigator.geolocation.watchPosition(async p=>{
+    try{await api(`/drivers/${driverId}/location`,'PATCH',{lat:p.coords.latitude,lng:p.coords.longitude});$('gpsStatus').textContent=`Live • ${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`;refreshMap();}
+    catch(e){$('gpsStatus').textContent='Location update failed';}
+  },e=>{toast('Location permission is required for live tracking','error');$('gpsStatus').textContent='Location blocked';},{enableHighAccuracy:true,maximumAge:3000,timeout:10000});
+}
+
+/* ===== Advanced frontend ===== */
+let advancedMap=null, mapLayers=[];
+function initAdvancedMap(){
+  if(advancedMap) return;
+  if(!window.L){ const box=document.getElementById('liveMap'); if(box) box.innerHTML='<div style="padding:24px;font-weight:600">Map library could not load. Check your internet connection and refresh the page.</div>'; return; }
+  advancedMap=L.map('liveMap').setView([26.9124,75.7873],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(advancedMap);
+  refreshMap();
+}
+async function refreshMap(){
+  if(!advancedMap) return; mapLayers.forEach(x=>advancedMap.removeLayer(x)); mapLayers=[];
+  try{
+    const [ds,rs,drs]=await Promise.all([api('/donations'),api('/recipients'),api('/drivers')]);
+    rs.forEach(r=>{const m=L.marker([r.lat,r.lng]).addTo(advancedMap).bindPopup('🏠 '+r.name+'<br>Capacity: '+r.capacity_kg+' kg');mapLayers.push(m)});
+    drs.forEach(d=>{const m=L.marker([d.lat,d.lng]).addTo(advancedMap).bindPopup('🚚 '+d.name+'<br>'+ (d.available?'Available':'On delivery'));mapLayers.push(m)});
+    ds.filter(d=>d.status==='matched'||d.status==='picked_up').forEach(d=>{const m=L.circleMarker([d.lat,d.lng],{radius:8}).addTo(advancedMap).bindPopup('🍱 Donation #'+d.id+'<br>'+d.description);mapLayers.push(m)});
+  }catch(e){}
+}
+async function refreshAdvanced(){
+ try{
+  const [imp,an,notifs,ds]=await Promise.all([api('/impact'),api('/analytics'),api('/notifications'),api('/donations')]);
+  $('activeCount').textContent=imp.active_donations||0; $('rescuedCount').textContent=imp.meals_rescued||0;
+  const latest=[...ds].reverse().find(x=>x.match_score); $('smartScore').textContent=latest?latest.match_score+'/100':'—';
+  $('notificationPanel').innerHTML=notifs.length?notifs.map(n=>`<div class="notif"><b>${n.kind.toUpperCase()} · ${n.sent?'Sent':'Demo'}</b><div>${n.message}</div><small>${new Date(n.time).toLocaleString()}</small></div>`).join(''):'<p class="muted">No notifications yet.</p>';
+  refreshMap();
+  loadShowcase();
+ }catch(e){}
+}
+async function testNotify(kind){
+ const to=kind==='email'?($('donor_email').value||'demo@example.com'):($('donor_phone').value||'+910000000000');
+ try{const q=new URLSearchParams({kind,to}); const r=await api('/notifications/test?'+q.toString(),'POST'); if(r.sent){ toast(kind==='email'?'✅ Real email sent successfully':'✅ Real SMS sent successfully'); } else { toast((kind==='email'?'Email not sent: ':'SMS not sent: ')+r.detail,'error'); } refreshAdvanced()}catch(e){toast(e.message,'error')}
+}
+function startCountdowns(){
+ document.querySelectorAll('[data-expiry]').forEach(n=>{const end=new Date(n.dataset.expiry); const tick=()=>{let sec=Math.max(0,Math.floor((end-Date.now())/1000));let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;n.textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`};tick();setInterval(tick,1000)})
+}
+
+async function runFoodCheck(){
+  const result=$('aiCheckResult'); result.innerHTML='<span class="muted">Analyzing…</span>';
+  try{
+    const r=await api('/features/ai-food-check','POST',{description:$('description').value||'Food donation',category:$('category').value,expires_in_minutes:parseInt($('expires').value)});
+    result.innerHTML=`<b>${r.suggested_category}</b> <span class="pill">${r.confidence}% confidence</span><div class="confidence"><i style="width:${r.confidence}%"></i></div><div class="muted">${r.checks.join(' · ')}</div><div class="feature-note">${r.warnings[0]}</div>`;
+  }catch(e){result.innerHTML='<span class="muted">Could not analyze right now.</span>';toast(e.message,'error')}
+}
+async function loadShowcase(){
+  try{
+    const [alerts,leaders,carbon,demand,route,recs,ds,ems]=await Promise.all([api('/features/expiry-alerts'),api('/features/leaderboard'),api('/features/carbon'),api('/features/demand'),api('/features/route/1'),api('/recipients'),api('/donations'),api('/features/emergency')]);
+    $('expiryAlerts').innerHTML=alerts.length?alerts.slice(0,4).map(a=>`<div class="alert ${a.severity==='critical'?'critical':''}"><b>#${a.donation_id}</b> · ${a.quantity_kg} kg · <b>${a.minutes_left} min</b> left<br><span class="muted">${a.food} · ${a.status}</span></div>`).join(''):'<span class="muted">✅ No urgent expiry alerts.</span>';
+    $('leaderboard').innerHTML=leaders.length?leaders.slice(0,5).map(x=>`<div class="show-row"><span><span class="rank">${x.rank}</span>${x.name}</span><b>${x.kg} kg</b></div>`).join(''):'<span class="muted">Complete a delivery to enter the leaderboard.</span>';
+    $('carbonImpact').innerHTML=`<span class="big">${carbon.co2e_kg} kg</span><b>estimated CO₂e avoided</b><div class="show-row"><span>Food rescued</span><b>${carbon.food_kg} kg</b></div><div class="show-row"><span>Meals supported</span><b>${carbon.meals}</b></div>`;
+    $('demandPrediction').innerHTML=demand.forecast.slice(0,4).map(x=>{const needs=Object.entries(x.needs||{}).slice(0,3).map(([k,v])=>`${k}: ${v} kg`).join(' · ');return `<div class="show-row"><span><b>${x.shelter}</b><br><small>${x.area}</small></span><b>${needs||'Monitor'}</b></div>`}).join('');
+    $('routeOptimization').innerHTML=`<div class="show-row"><span>Driver</span><b>${route.driver}</b></div><div class="show-row"><span>Optimized distance</span><b>${route.total_km} km</b></div><div class="show-row"><span>ETA estimate</span><b>${route.eta_minutes} min</b></div>`+(route.stops.length?route.stops.map((x,i)=>`<div class="route-stop"><span class="rank">${i+1}</span><span>#${x.donation_id} · ${x.donor}<br><small>${x.food} · ${x.km_from_previous} km</small></span></div>`).join(''):'<div class="feature-note">No active route stops yet.</div>');
+    const active=ds.filter(d=>['matched','picked_up'].includes(d.status));
+    $('qrDonation').innerHTML='<option value="">Select active donation</option>'+active.map(d=>`<option value="${d.id}">#${d.id} · ${d.description}</option>`).join('');
+    $('emShelter').innerHTML=recs.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+    $('emergencyList').innerHTML=ems.slice(0,3).map(e=>`<div class="alert ${e.urgency==='critical'?'critical':''}"><b>${e.urgency.toUpperCase()}</b> · ${e.quantity_kg} kg ${e.food_type}<br><small>${e.shelter} · ${e.people} people · ${e.status}</small></div>`).join('')||'<span class="muted">No open emergency requests.</span>';
+  }catch(e){console.warn('showcase',e)}
+}
+async function generateDriverPickupQR(id){
+  try{
+    const r=await api(`/features/qr/${id}`); const box=$(`driverQR_${id}`); if(!box) return; box.innerHTML='';
+    const scanUrl=r.scan_url || `${location.origin}/?pickup=${id}&token=${encodeURIComponent(r.token)}`;
+    if(window.QRCode){new QRCode(box,{text:scanUrl,width:95,height:95});}else{box.textContent=scanUrl;}
+    toast('📱 Donor approval QR ready — show it to the donor');
+  }catch(e){toast(e.message,'error')}
+}
+let scannedPickup={id:null,token:null};
+let donorQrScanner=null;
+let donorQrBusy=false;
+
+function parsePickupQrPayload(text){
+  const raw=(text||'').trim();
+  if(!raw) return null;
+  try{
+    const u=new URL(raw);
+    const id=u.searchParams.get('pickup');
+    const token=u.searchParams.get('token');
+    if(id&&token) return {id,token};
+  }catch(e){}
+  const idMatch=raw.match(/[?&]pickup=(\d+)/i);
+  const tokenMatch=raw.match(/[?&]token=([^&#\s]+)/i);
+  if(idMatch&&tokenMatch) return {id:idMatch[1],token:decodeURIComponent(tokenMatch[1])};
+  return null;
+}
+
+async function openPickupApproval(id,token){
+  scannedPickup={id:String(id),token:String(token)};
+  try{
+    const r=await api(`/features/pickup-approval/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`);
+    $('scanDetails').innerHTML=`<div><span>Food</span><b>${r.food}</b></div><div><span>Quantity</span><b>${r.quantity_kg} kg</b></div><div><span>Donor</span><b>${r.donor}</b></div><div><span>Driver</span><b>${r.driver||'Assigned driver'}</b></div><div><span>Recipient</span><b>${r.recipient||'-'}</b></div>`;
+    $('scanDetails').classList.remove('hidden'); $('scanSuccess').classList.add('hidden'); $('scanActions').classList.remove('hidden');
+    $('scanFooter').textContent='Only approve after you have physically handed the parcel to the driver.';
+    $('pickupApprovalModal').classList.remove('hidden');
+  }catch(e){ scannedPickup={id:null,token:null}; toast('This pickup QR is invalid, expired, or already used.','error'); }
+}
+
+async function startDonorQrScanner(){
+  if(!window.Html5Qrcode){ toast('QR scanner could not load. Please refresh the page.','error'); return; }
+  if(donorQrScanner) return;
+  $('qrReaderWrap').classList.remove('hidden'); $('startQrBtn').classList.add('hidden'); $('stopQrBtn').classList.remove('hidden');
+  $('qrScanStatus').classList.add('live'); $('qrScanStatus').innerHTML='🟢 Camera active — point your phone at the driver\'s QR code.'; donorQrBusy=false;
+  donorQrScanner=new Html5Qrcode('qrReader');
+  try{
+    const box=Math.min(280,Math.max(180,window.innerWidth-90));
+    await donorQrScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:box,height:box}},async decodedText=>{
+      if(donorQrBusy) return;
+      const payload=parsePickupQrPayload(decodedText);
+      if(!payload){ $('qrScanStatus').textContent='QR detected, but it is not a Surplus-to-Shelter pickup QR.'; return; }
+      donorQrBusy=true; $('qrScanStatus').textContent='✅ QR verified. Opening pickup approval…'; await stopDonorQrScanner(); await openPickupApproval(payload.id,payload.token);
+    },()=>{});
+  }catch(e){
+    donorQrScanner=null; $('qrReaderWrap').classList.add('hidden'); $('startQrBtn').classList.remove('hidden'); $('stopQrBtn').classList.add('hidden'); $('qrScanStatus').classList.remove('live');
+    $('qrScanStatus').textContent='Camera could not start. Allow camera access and try again.'; toast('Camera permission is required to scan the pickup QR.','error');
+  }
+}
+
+async function stopDonorQrScanner(){
+  if(donorQrScanner){ try{await donorQrScanner.stop();}catch(e){} try{donorQrScanner.clear();}catch(e){} donorQrScanner=null; }
+  $('qrReaderWrap').classList.add('hidden'); $('startQrBtn').classList.remove('hidden'); $('stopQrBtn').classList.add('hidden'); $('qrScanStatus').classList.remove('live');
+  if(!donorQrBusy) $('qrScanStatus').innerHTML='Camera is off. Tap <b>Scan QR</b> when the driver is ready.';
+}
+
+async function handlePickupScan(){
+  const q=new URLSearchParams(location.search), id=q.get('pickup'), token=q.get('token'); if(!id||!token) return;
+  history.replaceState({},document.title,location.pathname); await openPickupApproval(id,token);
+}
+
+function closePickupApproval(){
+  $('pickupApprovalModal').classList.add('hidden'); $('scanSuccess').classList.add('hidden'); $('scanActions').classList.remove('hidden'); $('scanDetails').classList.remove('hidden');
+  $('approvePickupBtn').disabled=false; $('approvePickupBtn').textContent='✅ Allow & complete pickup'; scannedPickup={id:null,token:null};
+}
+
+async function approveScannedPickup(){
+  if(!scannedPickup.id||!scannedPickup.token) return;
+  const btn=$('approvePickupBtn'); btn.disabled=true; btn.textContent='Confirming…';
+  try{
+    await api(`/features/pickup-approval/${encodeURIComponent(scannedPickup.id)}`,'POST',{token:scannedPickup.token});
+    $('scanDetails').classList.add('hidden'); $('scanActions').classList.add('hidden'); $('scanFooter').textContent='Pickup status has been updated automatically.'; $('scanSuccess').classList.remove('hidden');
+    confettiBurst(); toast('Pickup confirmed — parcel automatically marked as picked up'); refresh(); setTimeout(closePickupApproval,2200);
+  }catch(e){ toast(e.message,'error'); btn.disabled=false; btn.textContent='✅ Allow & complete pickup'; }
+}
+
+async function createEmergencyRequest(){
+  const shelterId=parseInt($('emShelter').value), qty=parseFloat($('emQty').value), people=parseInt($('emPeople').value);
+  if(!shelterId||!qty||!people){toast('Enter shelter, quantity and people count','error');return}
+  try{await api('/features/emergency','POST',{shelter_id:shelterId,food_type:$('emFood').value||'any',quantity_kg:qty,people,urgency:$('emUrgency').value,note:'Raised from command center'});toast('Emergency food request raised');loadShowcase();}catch(e){toast(e.message,'error')}
+}
+window.addEventListener('load',()=>{setTimeout(()=>{initAdvancedMap();refreshAdvanced();startCountdowns();loadDonorEmergencyNeeds();handlePickupScan()},300)});
+window.addEventListener('beforeunload',()=>{if(donorQrScanner){try{donorQrScanner.stop()}catch(e){}}});
+setInterval(refreshAdvanced,7000);
+</script>
+</body>
+</html>
